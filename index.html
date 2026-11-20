@@ -171,7 +171,7 @@ function costTable(c){
     `<tr><td>Machine Time (${escapeHTML(printerNames[c.printer])})</td><td>${formatPrintTime(c.hours)}</td><td>${money(c.hourlyRate)}/hr</td><td>${money(c.timeCost)}</td></tr>`+
     `<tr><td colspan="3"><strong>Total</strong></td><td><strong>${money(c.total)}</strong></td></tr></tbody></table>`;
 }
-const pickupImageURL='https://efficient-caterpillar.staticdomains.app/PPC.png';
+const pickupImageURL='./PPC.png';
 const pickupImageNote=`<p><img src="${pickupImageURL}" alt="3D Print Lab pickup instructions" style="display:block;max-width:100%;height:auto;border:0;"></p>`;
 // ADD MORE TEMPLATES HERE. Each template supplies a label, subject(data), needsQuote, fields, and render(data).
 const templates={
