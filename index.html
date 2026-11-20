@@ -15,7 +15,7 @@
 button{width:100%;padding:10px;background:#c00;border:0;color:white;font-weight:600;border-radius:5px;cursor:pointer;font-family:inherit;font-size:14px}
 button:hover{background:#a30000}button.secondary{background:#444}button.secondary:hover{background:#222}
 button:disabled{background:#aaa;cursor:not-allowed}.result{margin-top:15px;font-weight:700}.calculation-breakdown{margin-top:15px;font-size:13px;color:grey}
-.time-input-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}.time-input-row input{width:100%;padding:10px;border-radius:5px;border:2px solid #c00;font-family:inherit;font-size:15px}.time-input-row span{display:block;font-size:12px;color:#666;margin-top:5px}.material-entry{background:#fafafa;border:1px solid #ddd;border-radius:5px;padding:15px;margin-bottom:15px;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.time-input-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}.time-input-row input{width:100%;padding:10px;border-radius:5px;border:2px solid #c00;font-family:inherit;font-size:15px}.time-input-row span{display:block;font-size:12px;color:#666;margin-top:5px}.fixed-material{display:flex;align-items:center;padding:10px;border:1px solid #ddd;border-radius:5px;background:#fff}.material-entry{background:#fafafa;border:1px solid #ddd;border-radius:5px;padding:15px;margin-bottom:15px;display:grid;grid-template-columns:1fr 1fr;gap:10px}
 #tech-panel{display:none;min-width:0} .tech-layout{display:block} .calculator-pane{min-width:0}
 .container.technician-enabled{max-width:1450px;width:96%}
 .container.technician-enabled .tech-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.12fr);gap:28px;align-items:start}
@@ -49,13 +49,13 @@ button:disabled{background:#aaa;cursor:not-allowed}.result{margin-top:15px;font-
 <label class="mode-control" for="technician-toggle">Technician Mode <input type="checkbox" id="technician-toggle" aria-controls="tech-panel"></label></div>
 <div class="tech-layout"><div class="calculator-pane">
 <div class="form-group"><label for="printer">Select Printer</label><select id="printer" onchange="updatePrinterDetails()">
-<option value="bambu">Bambu X1-E</option><option value="ultimaker">Ultimaker Factor 4</option><option value="snapmaker">Snapmaker U1</option>
+<option value="bambu" selected>Bambu X1-E</option><option value="ultimaker">Ultimaker Factor 4</option><option value="snapmaker">Snapmaker U1</option>
 </select></div>
 <div class="form-group" id="material-count-section"><label for="material-count">Number of Materials</label><select id="material-count" onchange="updateMaterialInputs()"></select></div>
 <div id="materials-container"></div>
 <div class="form-group"><label for="hours">Print Time</label><div class="time-input-row"><div><input type="number" id="hours" min="0" step="1" inputmode="numeric" placeholder="0" aria-label="Print hours"><span>Hours</span></div><div><input type="number" id="minutes" min="0" max="59" step="1" inputmode="numeric" placeholder="00" aria-label="Print minutes"><span>Minutes</span></div></div><p class="hint">Type hours, then press Space to enter minutes.</p></div>
 <button id="calculate-btn" type="button" onclick="calculateCost()">Calculate Cost</button>
-<div class="result" id="result"></div><div class="calculation-breakdown" id="calculation-breakdown"></div>
+<div id="input-error" class="notice" hidden role="alert"></div><div class="result" id="result"></div><div class="calculation-breakdown" id="calculation-breakdown"></div>
 </div>
 
 <section id="tech-panel" aria-label="Technician Email Generator">
@@ -114,7 +114,7 @@ const money=n=>"$"+n.toFixed(2);
 function formatPrintTime(decimalHours){const totalMinutes=Math.round(decimalHours*60);return `${Math.floor(totalMinutes/60)} hrs and ${totalMinutes%60} mins`;}
 let calculation=null;
 function invalidateCalculation(){
-  calculation=null;$("result").textContent="";$("calculation-breakdown").innerHTML="";
+  calculation=null;$("input-error").hidden=true;$("result").textContent="";$("calculation-breakdown").innerHTML="";
   updateQuoteWarning();
   regeneratePreview();
 }
@@ -129,20 +129,28 @@ function updateMaterialInputs(){
   const materials=Object.keys(materialPrices[printer]);
   $("materials-container").innerHTML=Array.from({length:count},(_,index)=>{
     const i=index+1;
-    return `<div class="material-entry"><select id="material-${i}" aria-label="Material ${i}">${materials.map(m=>`<option value="${escapeHTML(m)}">${escapeHTML(m)}</option>`).join("")}</select><input type="number" id="grams-${i}" min="0" step="any" placeholder="grams" aria-label="Grams for material ${i}"></div>`;
+    const materialControl=printer==="bambu"
+      ? `<div class="fixed-material" aria-label="Material: PLA"><strong>PLA</strong><input type="hidden" id="material-${i}" value="PLA"></div>`
+      : `<select id="material-${i}" aria-label="Material ${i}">${materials.map(m=>`<option value="${escapeHTML(m)}">${escapeHTML(m)}</option>`).join("")}</select>`;
+    return `<div class="material-entry">${materialControl}<input type="number" id="grams-${i}" min="0" step="any" placeholder="grams" aria-label="Grams for material ${i}"></div>`;
   }).join("");
   invalidateCalculation();
 }
+function showInputError(message){
+  $("input-error").textContent=message;
+  $("input-error").hidden=false;
+}
 function readInputs(){
+  $("input-error").hidden=true;
   const printer=$("printer").value,count=Number($("material-count").value);
   const hoursText=$("hours").value.trim(),minutesText=$("minutes").value.trim();
   const wholeHours=hoursText===""?0:Number(hoursText),minutes=minutesText===""?0:Number(minutesText);
-  if((!hoursText&&!minutesText)||!Number.isInteger(wholeHours)||wholeHours<0||!Number.isInteger(minutes)||minutes<0||minutes>59){alert("Enter whole hours and minutes between 0 and 59.");return null;}
+  if(!Number.isInteger(wholeHours)||wholeHours<0||!Number.isInteger(minutes)||minutes<0||minutes>59){showInputError("Enter valid whole hours and minutes from 0 to 59. Empty time fields count as zero.");return null;}
   const hours=wholeHours+minutes/60;
   const totals={};
   for(let i=1;i<=count;i++){
     const mat=$(`material-${i}`).value,raw=$(`grams-${i}`).value.trim(),grams=Number(raw);
-    if(!raw||!Number.isFinite(grams)||grams<=0){alert("Enter valid material amounts");return null;}
+    if(!raw||!Number.isFinite(grams)||grams<=0){showInputError("Enter a material weight greater than zero to calculate cost.");return null;}
     totals[mat]=(totals[mat]||0)+grams;
   }
   return {printer,hours,totals};
@@ -344,7 +352,7 @@ function setTechnicianMode(enabled){
   $("technician-toggle").checked=enabled;
   document.querySelector(".container").classList.toggle("technician-enabled",enabled);
   updateQuoteWarning();
-  if(enabled){regeneratePreview();openHelp();}
+  if(enabled){regeneratePreview();}
   else{closeHelp();}
 }
 function openHelp(){
@@ -377,7 +385,10 @@ $("material-count").addEventListener("change",invalidateCalculation);
 $("materials-container").addEventListener("input",invalidateCalculation);
 $("materials-container").addEventListener("change",invalidateCalculation);
 $("open-pickup-image").href=pickupImageURL;
-updatePrinterDetails();initTemplates();
+// Set a reliable default before building dependent controls.
+$("printer").value="bambu";
+updatePrinterDetails();
+initTemplates();
 </script>
 
 </body>
