@@ -53,7 +53,7 @@ button:disabled{background:#aaa;cursor:not-allowed}.result{margin-top:15px;font-
 </select></div>
 <div class="form-group" id="material-count-section"><label for="material-count">Number of Materials</label><select id="material-count" onchange="updateMaterialInputs()"></select></div>
 <div id="materials-container"></div>
-<div class="form-group"><label for="hours">Print Time</label><div class="time-input-row"><div><input type="number" id="hours" min="0" step="1" inputmode="numeric" placeholder="0" aria-label="Print hours"><span>Hours</span></div><div><input type="number" id="minutes" min="0" max="59" step="1" inputmode="numeric" placeholder="00" aria-label="Print minutes"><span>Minutes</span></div></div><p class="hint">Type hours, then press Space to enter minutes.</p></div>
+<div class="form-group"><label for="hours">Print Time</label><div class="time-input-row"><div><input type="number" id="hours" min="0" step="1" inputmode="numeric" placeholder="0" value="0" aria-label="Print hours"><span>Hours</span></div><div><input type="number" id="minutes" min="0" max="59" step="1" inputmode="numeric" placeholder="00" value="0" aria-label="Print minutes"><span>Minutes</span></div></div><p class="hint">Type hours, then press Space to enter minutes.</p></div>
 <button id="calculate-btn" type="button" onclick="calculateCost()">Calculate Cost</button>
 <div id="input-error" class="notice" hidden role="alert"></div><div class="result" id="result"></div><div class="calculation-breakdown" id="calculation-breakdown"></div>
 </div>
@@ -130,7 +130,7 @@ function updateMaterialInputs(){
   $("materials-container").innerHTML=Array.from({length:count},(_,index)=>{
     const i=index+1;
     const materialControl=printer==="bambu"
-      ? `<div class="fixed-material" aria-label="Material: PLA"><strong>PLA</strong><input type="hidden" id="material-${i}" value="PLA"></div>`
+      ? `<div class="fixed-material" aria-label="Material: PLA"><span>PLA</span><input type="hidden" id="material-${i}" value="PLA"></div>`
       : `<select id="material-${i}" aria-label="Material ${i}">${materials.map(m=>`<option value="${escapeHTML(m)}">${escapeHTML(m)}</option>`).join("")}</select>`;
     return `<div class="material-entry">${materialControl}<input type="number" id="grams-${i}" min="0" step="any" placeholder="grams" aria-label="Grams for material ${i}"></div>`;
   }).join("");
@@ -145,7 +145,8 @@ function readInputs(){
   const printer=$("printer").value,count=Number($("material-count").value);
   const hoursText=$("hours").value.trim(),minutesText=$("minutes").value.trim();
   const wholeHours=hoursText===""?0:Number(hoursText),minutes=minutesText===""?0:Number(minutesText);
-  if(!Number.isInteger(wholeHours)||wholeHours<0||!Number.isInteger(minutes)||minutes<0||minutes>59){showInputError("Enter valid whole hours and minutes from 0 to 59. Empty time fields count as zero.");return null;}
+  if(!Number.isInteger(wholeHours)||wholeHours<0||!Number.isInteger(minutes)||minutes<0||minutes>59){showInputError("Enter valid whole hours and minutes from 0 to 59. Leave either field empty if it is not needed.");return null;}
+  if(wholeHours===0&&minutes===0){showInputError("Enter a print time greater than zero in Hours or Minutes.");return null;}
   const hours=wholeHours+minutes/60;
   const totals={};
   for(let i=1;i<=count;i++){
